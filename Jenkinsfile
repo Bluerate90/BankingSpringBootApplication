@@ -45,6 +45,7 @@ pipeline {
                 ]) {
                     sh '''
                         docker build -t $USER/bankingapp:${BUILD_NUMBER} .
+                        docker tag $USER/bankingapp:${BUILD_NUMBER} $USER/bankingapp:latest
                     '''
                 }
             }
@@ -62,6 +63,7 @@ pipeline {
                     sh '''
                         echo "$PASS" | docker login -u "$USER" --password-stdin
                         docker push $USER/bankingapp:${BUILD_NUMBER}
+                        docker push $USER/bankingapp:latest
                         docker logout
                     '''
                 }
