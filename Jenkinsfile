@@ -1,46 +1,20 @@
-node{
-    
-    def tag, dockerHubUser, containerName, httpPort = ""
-    
-    stage('Prepare Environment'){
-        echo 'Initialize Environment'
-        tag="3.0"
-	withCredentials([usernamePassword(credentialsId: 'DOCKER_CRED', usernameVariable: 'dockerUser', passwordVariable: 'dockerPassword')]) {
-		dockerHubUser="$dockerUser"
+pipeline {
+    agent any
+    tools { maven 'Maven3' }
+    stages {
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/Bluerate90/BankingSpringBootApplication.git'
+            }
         }
-	containerName="bankingapp"
-	httpPort="8989"
-    }
-    
-    stage('Code Checkout'){
-        try{
-            checkout scm
+        stage('Build') {
+            steps { sh 'mvn clean package' }
         }
-        catch(Exception e){
-            echo 'Exception occured in Git Code Checkout Stage'
-            currentBuild.result = "FAILURE"
+        stage('Test') {
+            steps { sh 'mvn test' }
+        }
+        stage('Archive Artifact') {
+            steps { archiveArtifacts artifacts: 'target/*.jar', fingerprint: true }
         }
     }
-    
-    stage('Maven Build'){
-        sh "mvn clean install"        
-    }
-    
-    stage('Docker Image Build'){
-        echo 'Creating Docker image'
-        sh "docker build -t $dockerHubUser/$containerName:$tag --pull --no-cache ."
-    }  
-	
-    stage('Publishing Image to DockerHub'){
-        echo 'Pushing the docker image to DockerHub'
-        withCredentials([usernamePassword(credentialsId: 'DOCKER_CRED', usernameVariable: 'dockerUser', passwordVariable: 'dockerPassword')]) {
-		sh "docker login -u $dockerUser -p $dockerPassword"
-		sh "docker push $dockerUser/$containerName:$tag"
-		echo "Image push complete"
-        } 
-    }    
-	
-	stage('Ansible Playbook Execution'){
-		sh "ansible-playbook -i inventory.yaml kubernetesDeploy.yaml -e httpPort=$httpPort -e containerName=$containerName -e dockerImageTag=$dockerHubUser/$containerName:$tag"
-	}
 }
