@@ -23,4 +23,36 @@ pipeline {
             steps { archiveArtifacts artifacts: 'target/*.jar', fingerprint: true }
         }
     }
+    stage('Build Docker Image') {
+        steps {
+            withCredentials([
+                usernamePassword(
+                    credentialsId: '199f83be-e6da-4750-bb2f-826f171cb06e',
+                    usernameVariable: 'USER',
+                    passwordVariable: 'PASS'
+                )
+            ]) {
+                 sh '''
+                     docker build -t $USER/bankingapp:${BUILD_NUMBER} .
+                 '''
+            }
+        }
+    }
+    stage('Push Docker Image') {
+        steps {
+            withCredentials([
+                usernamePassword(
+                    credentialsId: '199f83be-e6da-4750-bb2f-826f171cb06e',
+                    usernameVariable: 'USER',
+                    passwordVariable: 'PASS'
+                )
+            ]) {
+                sh '''
+                    echo "$PASS" | docker login -u "$USER" --password-stdin
+                    docker push $USER/bankingapp:${BUILD_NUMBER}
+                    docker logout
+                '''
+            }
+        }
+    }
 }
